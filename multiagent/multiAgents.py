@@ -11,6 +11,7 @@
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 import math
+from copy import deepcopy
 from math import sqrt
 
 from util import manhattanDistance
@@ -247,17 +248,129 @@ class MinimaxAgent(MultiAgentSearchAgent):
             if value == maxValue:
                 return action
 
+class Value:
+
+    def __init__(self, val):
+        self.val = val
+
+def isMaximizer(agentIndex, numAgents):
+    """
+    :param agentIndex:
+    :param gameState:
+    :return: true if the given agent is a maximizer (e.g.) pacman. False if the given agent is a minimizer (ghost)
+    """
+    return agentIndex % numAgents == 0
+
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
     Your minimax agent with alpha-beta pruning (question 3)
     """
 
+    def getValue(self, agentIndex, gameState, currentDepth, maximizerBestOption: Value, minimizerBestOption: Value):
+        """
+        Function that will be called recursively to determine the best value for current agent
+        :param agentIndex: the agent that may choose the next action
+        :param gameState: the current state of the game
+        :param currentDepth: the current depth (amount of choices pacman and the ghosts have made). Should be less than current depth
+        :return: the best value for current agent
+        """
+
+        numAgents = gameState.getNumAgents()
+
+        # Base case: return actual values
+        if currentDepth > self.depth:
+            return self.evaluationFunction(gameState)
+        elif gameState.isWin() or gameState.isLose():
+            return gameState.getScore()
+
+        # Pacman maximizes, Ghost minimizes
+        maxOrMin = max if isMaximizer(agentIndex, numAgents) else min
+        bestValue = ((-1) if isMaximizer(agentIndex, numAgents) else 1) * math.inf
+
+        for action in gameState.getLegalActions(agentIndex):
+
+            newGameState = gameState.generateSuccessor(agentIndex, action)
+
+            # Another agent may choose its best action
+            nextAgentIndex = (agentIndex + 1) % gameState.getNumAgents()
+
+            if nextAgentIndex == 0:
+                newDepth = currentDepth + 1
+            else:
+                newDepth = currentDepth
+
+            nextMaximizerBestOption = maximizerBestOption
+            nextMinimizerBestOption = minimizerBestOption
+
+            if not (newGameState.isWin() or newGameState.isLose()) and newDepth <= self.depth:
+                if isMaximizer(agentIndex + 1, numAgents) and not isMaximizer(agentIndex, numAgents):
+                    nextMaximizerBestOption = Value(-math.inf)
+                elif not isMaximizer(agentIndex + 1, numAgents) and isMaximizer(agentIndex, numAgents):
+                    nextMinimizerBestOption = Value(math.inf)
+
+            bestValue = maxOrMin(bestValue, self.getValue(nextAgentIndex, newGameState, newDepth, nextMaximizerBestOption, nextMinimizerBestOption))
+
+            if isMaximizer(agentIndex, numAgents):
+                maximizerBestOption.val = max(maximizerBestOption.val, bestValue)
+
+                if bestValue > minimizerBestOption.val:
+                    return bestValue
+            else:
+
+                minimizerBestOption.val = min(minimizerBestOption.val, bestValue)
+                if bestValue < maximizerBestOption.val:
+                    return bestValue
+
+        return bestValue
+
     def getAction(self, gameState):
+
         """
-        Returns the minimax action using self.depth and self.evaluationFunction
+        Returns the minimax action from the current gameState using self.depth
+        and self.evaluationFunction.
+
+        Here are some method calls that might be useful when implementing minimax.
+
+        gameState.getLegalActions(agentIndex):
+        Returns a list of legal actions for an agent
+        agentIndex=0 means Pacman, ghosts are >= 1
+
+        gameState.generateSuccessor(agentIndex, action):
+        Returns the successor game state after an agent takes an action
+
+        gameState.getNumAgents():
+        Returns the total number of agents in the game
+
+        gameState.isWin():
+        Returns whether or not the game state is a winning state
+
+        gameState.isLose():
+        Returns whether or not the game state is a losing state
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        actionValuePairs = []
+
+        agentIndex = 0
+
+        maxBestOption = Value(-math.inf)
+
+        bestValue = -math.inf
+
+        for action in gameState.getLegalActions(agentIndex):
+            newGameState = gameState.generateSuccessor(agentIndex, action)
+
+            childBestValue = self.getValue(agentIndex + 1, newGameState, 1, maxBestOption, Value(math.inf))
+            bestValue = max(bestValue, childBestValue)
+
+            maxBestOption.val = max(maxBestOption.val, bestValue)
+
+            actionValuePairs.append((action, bestValue))
+
+        maxValue = max([value for action, value in actionValuePairs])
+
+        for action, value in actionValuePairs:
+            if value == maxValue:
+                return action
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
