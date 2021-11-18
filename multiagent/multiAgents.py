@@ -266,7 +266,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
     Your minimax agent with alpha-beta pruning (question 3)
     """
 
-    def getValue(self, agentIndex, gameState, currentDepth, maximizerBestOption: Value, minimizerBestOption: Value):
+    def getValue(self, agentIndex, gameState, currentDepth, maximizerBestOption: float, minimizerBestOption: float):
         """
         Function that will be called recursively to determine the best value for current agent
         :param agentIndex: the agent that may choose the next action
@@ -299,26 +299,17 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
             else:
                 newDepth = currentDepth
 
-            nextMaximizerBestOption = maximizerBestOption
-            nextMinimizerBestOption = minimizerBestOption
-
-            if not (newGameState.isWin() or newGameState.isLose()) and newDepth <= self.depth:
-                if isMaximizer(agentIndex + 1, numAgents) and not isMaximizer(agentIndex, numAgents):
-                    nextMaximizerBestOption = Value(-math.inf)
-                elif not isMaximizer(agentIndex + 1, numAgents) and isMaximizer(agentIndex, numAgents):
-                    nextMinimizerBestOption = Value(math.inf)
-
-            bestValue = maxOrMin(bestValue, self.getValue(nextAgentIndex, newGameState, newDepth, nextMaximizerBestOption, nextMinimizerBestOption))
+            bestValue = maxOrMin(bestValue, self.getValue(nextAgentIndex, newGameState, newDepth, maximizerBestOption, minimizerBestOption))
 
             if isMaximizer(agentIndex, numAgents):
-                maximizerBestOption.val = max(maximizerBestOption.val, bestValue)
+                maximizerBestOption = max(maximizerBestOption, bestValue)
 
-                if bestValue > minimizerBestOption.val:
+                if bestValue > minimizerBestOption:
                     return bestValue
             else:
 
-                minimizerBestOption.val = min(minimizerBestOption.val, bestValue)
-                if bestValue < maximizerBestOption.val:
+                minimizerBestOption = min(minimizerBestOption, bestValue)
+                if bestValue < maximizerBestOption:
                     return bestValue
 
         return bestValue
@@ -352,17 +343,18 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
 
         agentIndex = 0
 
-        maxBestOption = Value(-math.inf)
+        maxBestOption = -math.inf
+        minBestOption = math.inf
 
         bestValue = -math.inf
 
         for action in gameState.getLegalActions(agentIndex):
             newGameState = gameState.generateSuccessor(agentIndex, action)
 
-            childBestValue = self.getValue(agentIndex + 1, newGameState, 1, maxBestOption, Value(math.inf))
+            childBestValue = self.getValue(agentIndex + 1, newGameState, 1, maxBestOption, minBestOption)
             bestValue = max(bestValue, childBestValue)
 
-            maxBestOption.val = max(maxBestOption.val, bestValue)
+            maxBestOption = max(maxBestOption, bestValue)
 
             actionValuePairs.append((action, bestValue))
 
