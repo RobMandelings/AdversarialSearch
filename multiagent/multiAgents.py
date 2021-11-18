@@ -10,6 +10,7 @@
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
+import math
 from math import sqrt
 
 from util import manhattanDistance
@@ -131,7 +132,6 @@ class ReflexAgent(Agent):
         output -= foodDistance.value * penalties.get(EvaluationFactors.DISTANCE_TO_FOOD)
         output -= actionValues[action] * penalties.get(EvaluationFactors.DIRECTION)
 
-        "*** YOUR CODE HERE ***"
         return output
 
 def scoreEvaluationFunction(currentGameState):
@@ -160,6 +160,10 @@ class MultiAgentSearchAgent(Agent):
     """
 
     def __init__(self, evalFn='scoreEvaluationFunction', depth='2'):
+        """
+        :param evalFn:
+        :param depth:
+        """
         self.index = 0  # Pacman is always agent index 0
         self.evaluationFunction = util.lookup(evalFn, globals())
         self.depth = int(depth)
@@ -169,7 +173,43 @@ class MinimaxAgent(MultiAgentSearchAgent):
     Your minimax agent (question 2)
     """
 
+    def getValue(self, agentIndex, gameState, currentDepth):
+        """
+        Function that will be called recursively to determine the best value for current agent
+        :param agentIndex: the agent that may choose the next action
+        :param gameState: the current state of the game
+        :param currentDepth: the current depth (amount of choices pacman and the ghosts have made). Should be less than current depth
+        :return: the best value for current agent
+        """
+
+        # Base case: return actual values
+        if currentDepth > self.depth:
+            return self.evaluationFunction(gameState)
+        elif gameState.isWin() or gameState.isLose():
+            return gameState.getScore()
+
+        # Pacman maximizes, Ghost minimizes
+        maxOrMin = max if agentIndex % gameState.getNumAgents() == 0 else min
+        bestValue = ((-1) if agentIndex % gameState.getNumAgents() == 0 else 1) * math.inf
+
+        for action in gameState.getLegalActions(agentIndex):
+
+            newGameState = gameState.generateSuccessor(agentIndex, action)
+
+            # Another agent may choose its best action
+            nextAgentIndex = (agentIndex + 1) % gameState.getNumAgents()
+
+            if nextAgentIndex == 0:
+                newDepth = currentDepth + 1
+            else:
+                newDepth = currentDepth
+
+            bestValue = maxOrMin(bestValue, self.getValue(nextAgentIndex, newGameState, newDepth))
+
+        return bestValue
+
     def getAction(self, gameState):
+
         """
         Returns the minimax action from the current gameState using self.depth
         and self.evaluationFunction.
@@ -192,8 +232,20 @@ class MinimaxAgent(MultiAgentSearchAgent):
         gameState.isLose():
         Returns whether or not the game state is a losing state
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        actionValuePairs = []
+
+        agentIndex = 0
+
+        for action in gameState.getLegalActions(agentIndex):
+            newGameState = gameState.generateSuccessor(agentIndex, action)
+            actionValuePairs.append((action, self.getValue(agentIndex + 1, newGameState, 1)))
+
+        maxValue = max([value for action, value in actionValuePairs])
+
+        for action, value in actionValuePairs:
+            if value == maxValue:
+                return action
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
