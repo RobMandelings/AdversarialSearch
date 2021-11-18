@@ -90,50 +90,39 @@ class ReflexAgent(Agent):
         """
         # Useful information you can extract from a GameState (pacman.py)
 
-        output = 0
-
         successorGameState = currentGameState.generatePacmanSuccessor(action)
         newPos = successorGameState.getPacmanPosition()
 
-        previousFoodPositions = currentGameState.getFood().asList()
         newFoodPositions = successorGameState.getFood().asList()
+        foodDistances = [distance(foodPos, newPos) for foodPos in newFoodPositions]
 
         # Does not correspond to new ghost action; Reflex agent does not know what the next action of the ghost will be, so take this into acount.
         newGhostStates = successorGameState.getGhostStates()
-        newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
-
-        penalties = {EvaluationFactors.DANGER_LEVEL: 100, EvaluationFactors.DISTANCE_TO_FOOD: 10, EvaluationFactors.DIRECTION: 1}
-
-        actionValues = {'North': 0, 'East': 1, 'South': 2, 'West': 3, 'Stop': 4}
-
         # Houdt ineens rekening met het feit dat meerdere danger positions van meerdere ghosts nog meer gevaarlijk is
+
+        minGhostDistance = math.inf
         for ghostState in newGhostStates:
             ghostPos = ghostState.configuration.getPosition()
 
-            danger = distance(newPos, ghostPos) <= 1
-            output -= int(danger) * penalties.get(EvaluationFactors.DANGER_LEVEL)
+            minGhostDistance = min(minGhostDistance, distance(newPos, ghostPos))
 
-        if len(newFoodPositions) != len(previousFoodPositions):
-            foodDistance = FoodDistance.CLOSER
-        else:
+        ghostDistanceWeight = -1 / 2
+        ghostDistanceFeature = math.inf if (minGhostDistance - 1) == 0 else 1 / (minGhostDistance - 1)
 
-            prevFoodDistances = [distance(foodPos, currentGameState.getPacmanPosition()) for foodPos in previousFoodPositions]
-            newFoodDistances = [distance(foodPos, newPos) for foodPos in newFoodPositions]
+        foodDistanceWeight = 3
+        foodDistanceFeature = 1 / (0.01 if len(foodDistances) == 0 or min(foodDistances) - 1 == 0 else min(foodDistances) - 1)
 
-            minNewFoodDistance = min(newFoodDistances)
-            minPrevFoodDistance = min(prevFoodDistances)
+        scoreWeight = 100
+        scoreFeature = successorGameState.getScore()
 
-            if minNewFoodDistance < minPrevFoodDistance:
-                foodDistance = FoodDistance.CLOSER
-            elif minNewFoodDistance == minPrevFoodDistance:
-                foodDistance = FoodDistance.SAME
-            else:
-                foodDistance = FoodDistance.FURTHER
+        newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
-        output -= foodDistance.value * penalties.get(EvaluationFactors.DISTANCE_TO_FOOD)
-        output -= actionValues[action] * penalties.get(EvaluationFactors.DIRECTION)
+        # actionWeight = 1
+        # actionFeature = random.randint(1, 5)
 
-        return output
+        eval = ghostDistanceWeight * ghostDistanceFeature + foodDistanceWeight * foodDistanceFeature + scoreWeight * scoreFeature
+
+        return eval
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -459,8 +448,38 @@ def betterEvaluationFunction(currentGameState):
 
     DESCRIPTION: <write something here so we know what you did>
     """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    newPos = currentGameState.getPacmanPosition()
+
+    newFoodPositions = currentGameState.getFood().asList()
+    foodDistances = [distance(foodPos, newPos) for foodPos in newFoodPositions]
+
+    # Does not correspond to new ghost action; Reflex agent does not know what the next action of the ghost will be, so take this into acount.
+    newGhostStates = currentGameState.getGhostStates()
+    # Houdt ineens rekening met het feit dat meerdere danger positions van meerdere ghosts nog meer gevaarlijk is
+
+    minGhostDistance = math.inf
+    for ghostState in newGhostStates:
+        ghostPos = ghostState.configuration.getPosition()
+
+        minGhostDistance = min(minGhostDistance, distance(newPos, ghostPos))
+
+    ghostDistanceWeight = -1 / 2
+    ghostDistanceFeature = math.inf if (minGhostDistance - 1) == 0 else 1 / (minGhostDistance - 1)
+
+    foodDistanceWeight = 10
+    foodDistanceFeature = 1 / (0.01 if len(foodDistances) == 0 or min(foodDistances) - 1 == 0 else min(foodDistances) - 1)
+
+    scoreWeight = 100
+    scoreFeature = currentGameState.getScore()
+
+    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+
+    # actionWeight = 1
+    # actionFeature = random.randint(1, 5)
+
+    eval = ghostDistanceWeight * ghostDistanceFeature + foodDistanceWeight * foodDistanceFeature + scoreWeight * scoreFeature
+
+    return eval
 
 # Abbreviation
 better = betterEvaluationFunction
