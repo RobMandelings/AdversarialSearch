@@ -369,15 +369,88 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
       Your expectimax agent (question 4)
     """
 
-    def getAction(self, gameState):
+    def getValue(self, agentIndex, gameState, currentDepth):
         """
-        Returns the expectimax action using self.depth and self.evaluationFunction
+        Function that will be called recursively to determine the best value for current agent
+        :param agentIndex: the agent that may choose the next action
+        :param gameState: the current state of the game
+        :param currentDepth: the current depth (amount of choices pacman and the ghosts have made). Should be less than current depth
+        :return: the best value for current agent
+        """
 
-        All ghosts should be modeled as choosing uniformly at random from their
-        legal moves.
+        # Base case: return actual values
+        if currentDepth > self.depth:
+            return self.evaluationFunction(gameState)
+        elif gameState.isWin() or gameState.isLose():
+            return gameState.getScore()
+
+        # Pacman maximizes, Ghost minimizes
+        isMaximizer = agentIndex % gameState.getNumAgents() == 0
+
+        probability = 1 / len(gameState.getLegalActions(agentIndex))
+
+        if isMaximizer:
+            value = -math.inf
+        else:
+            value = 0
+
+        for action in gameState.getLegalActions(agentIndex):
+
+            newGameState = gameState.generateSuccessor(agentIndex, action)
+
+            # Another agent may choose its best action
+            nextAgentIndex = (agentIndex + 1) % gameState.getNumAgents()
+
+            if nextAgentIndex == 0:
+                newDepth = currentDepth + 1
+            else:
+                newDepth = currentDepth
+
+            if isMaximizer:
+                value = max(value, self.getValue(nextAgentIndex, newGameState, newDepth))
+            else:
+                value += probability * self.getValue(nextAgentIndex, newGameState, newDepth)
+
+        return value
+
+    def getAction(self, gameState):
+
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        Returns the minimax action from the current gameState using self.depth
+        and self.evaluationFunction.
+
+        Here are some method calls that might be useful when implementing minimax.
+
+        gameState.getLegalActions(agentIndex):
+        Returns a list of legal actions for an agent
+        agentIndex=0 means Pacman, ghosts are >= 1
+
+        gameState.generateSuccessor(agentIndex, action):
+        Returns the successor game state after an agent takes an action
+
+        gameState.getNumAgents():
+        Returns the total number of agents in the game
+
+        gameState.isWin():
+        Returns whether or not the game state is a winning state
+
+        gameState.isLose():
+        Returns whether or not the game state is a losing state
+        """
+
+        actionValuePairs = []
+
+        agentIndex = 0
+
+        for action in gameState.getLegalActions(agentIndex):
+            newGameState = gameState.generateSuccessor(agentIndex, action)
+            actionValuePairs.append((action, self.getValue(agentIndex + 1, newGameState, 1)))
+
+        maxValue = max([value for action, value in actionValuePairs])
+
+        for action, value in actionValuePairs:
+            if value == maxValue:
+                return action
 
 def betterEvaluationFunction(currentGameState):
     """
